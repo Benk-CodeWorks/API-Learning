@@ -1,3 +1,4 @@
+
 """
 Simple REST API - Books Collection
 Demonstrates the 4 core HTTP methods: GET, POST, PUT, DELETE
@@ -23,7 +24,7 @@ def find_book(book_id):
 # GET /books — retrieve all books
 @app.route("/books", methods=["GET"])
 def get_books():
-    return jsonify({"books": books, "count": len(books)})
+    return jsonify({"bookssss": books, "count": len(books)})
 
 
 # GET /books/<id> — retrieve a single book by ID
