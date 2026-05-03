@@ -1,7 +1,9 @@
 import os
+import json
 from flask import Flask, request, jsonify, render_template
 from supabase import create_client, Client
 from dotenv import load_dotenv
+import anthropic
 
 # Load variables from .env into the environment
 load_dotenv()
@@ -12,6 +14,7 @@ app = Flask(__name__)
 url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
+claude = anthropic.Anthropic()
 
 
 # Home route — serves the dashboard UI
@@ -81,6 +84,42 @@ def update_user(user_id):
         "message": "User updated",
         "user": response.data[0]
     })
+
+
+# POST — ask Claude a question, optionally with user data as context
+@app.route("/ask-claude", methods=["POST"])
+def ask_claude():
+    data = request.get_json()
+    question = data.get("question", "").strip()
+    include_users = data.get("include_users", False)
+
+    if not question:
+        return jsonify({"error": "Please provide a question"}), 400
+
+    user_context = ""
+    if include_users:
+        users_response = supabase.table("users").select("*").execute()
+        if users_response.data:
+            user_context = f"\n\nCurrent users in the database:\n{json.dumps(users_response.data, indent=2)}"
+
+    with claude.messages.stream(
+        model="claude-opus-4-7",
+        max_tokens=1024,
+        thinking={"type": "adaptive"},
+        system=[{
+            "type": "text",
+            "text": "You are a helpful assistant for a user management API built with Flask and Supabase. Answer questions clearly and concisely.",
+            "cache_control": {"type": "ephemeral"}
+        }],
+        messages=[{
+            "role": "user",
+            "content": question + user_context
+        }]
+    ) as stream:
+        message = stream.get_final_message()
+
+    answer = next((b.text for b in message.content if b.type == "text"), "")
+    return jsonify({"answer": answer, "tokens_used": message.usage.output_tokens})
 
 
 if __name__ == '__main__':
