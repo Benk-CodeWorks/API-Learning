@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -14,10 +14,10 @@ key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
 
 
-# Home route
+# Home route — serves the dashboard UI
 @app.route("/")
 def home():
-    return jsonify({"message": "Welcome to my API!"})
+    return render_template("index.html")
 
 
 # GET a single user by ID
